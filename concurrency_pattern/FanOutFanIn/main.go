@@ -3,17 +3,20 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"runtime"
+	"sync"
 	"time"
 )
 
 func main() {
-	FindPrimeNum()
+	rand := func() interface{} { return rand.Intn(500000000) }
+
+	FindPrimeNum(rand)
+	FindPrimeNumFanOut(rand)
 }
 
 // FindPrimeNum finds prime number within given stream. basically, it's very slow algorithm
-func FindPrimeNum() {
-	rand := func () interface {} {return rand.Intn(500000000)}
-
+func FindPrimeNum(rand func() interface{}) {
 	done := make(chan interface{})
 	defer close(done)
 
@@ -25,15 +28,39 @@ func FindPrimeNum() {
 		fmt.Printf("\t%d\n", prime)
 	}
 
-	fmt.Printf("Search took: %v", time.Since(start))
+	fmt.Printf("Search took: %v \n", time.Since(start))
+}
+
+// FindPrimeNumFanOut is fan out version FindPrimeNum function
+func FindPrimeNumFanOut(rand func() interface{}) {
+	done := make(chan interface{})
+	defer close(done)
+
+	start := time.Now()
+
+	randIntStream := toInt(done, repeatFn(done, rand))
+
+	numFinders := runtime.NumCPU()
+	fmt.Printf("Spinning up %d prime finders.\n", numFinders)
+	finders := make([]<-chan interface{}, numFinders)
+	fmt.Println("Primes")
+	for i := 0; i < numFinders; i++ {
+		finders[i] = primeFinder(done, randIntStream)
+	}
+
+	for prime := range take(done, primeFinder(done, randIntStream), 10) {
+		fmt.Printf("\t%d\n", prime)
+	}
+
+	fmt.Printf("Search took: %v \n", time.Since(start))
 }
 
 // primeFinder finds prime number, dividing values with smaller numbers
 func primeFinder(
 	done <-chan interface{},
 	valueStream <-chan int,
-	)<- chan int{
-	primeStream := make(chan int)
+) <-chan interface{} {
+	primeStream := make(chan interface{})
 	go func() {
 		for {
 			select {
@@ -58,10 +85,10 @@ func primeFinder(
 }
 
 // repeatFn generates stream repeatedly using given function
-func repeatFn (
+func repeatFn(
 	done <-chan interface{},
 	fn func() interface{},
-	) <-chan interface{} {
+) <-chan interface{} {
 	valueStream := make(chan interface{})
 	go func() {
 		defer close(valueStream)
@@ -98,10 +125,10 @@ func toInt(
 // take reads value from channel num times
 func take(
 	done <-chan interface{},
-	valueStream <-chan int,
+	valueStream <-chan interface{},
 	num int,
-) <-chan int {
-	takeStream := make(chan int)
+) <-chan interface{} {
+	takeStream := make(chan interface{})
 	go func() {
 		defer close(takeStream)
 		for i := 0; i < num; i++ {
@@ -113,4 +140,37 @@ func take(
 		}
 	}()
 	return takeStream
+}
+
+// fainIn
+func fanIn(
+	done <-chan interface{},
+	channels ...<-chan interface{},
+) <-chan interface{} {
+	var wg sync.WaitGroup
+	multiplexedStream := make(chan interface{})
+
+	multiplex := func(c <-chan interface{}) {
+		defer wg.Done()
+		for i := range c {
+			select {
+			case <-done:
+				return
+			case multiplexedStream <- i:
+			}
+		}
+	}
+	wg.Add(len(channels))
+
+	for _, c := range channels {
+		go multiplex(c)
+	}
+
+	//wait until all reads end
+	go func() {
+		wg.Wait()
+		close(multiplexedStream)
+	}()
+
+	return multiplexedStream
 }
