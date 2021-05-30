@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	rand := func() interface{} { return rand.Intn(500000000) }
+	rand := func() interface{} { return rand.Intn(5000000) }
 
 	FindPrimeNum(rand)
 	FindPrimeNumFanOut(rand)
