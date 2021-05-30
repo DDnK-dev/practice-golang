@@ -1,6 +1,6 @@
 /*
 This package shows how to use channel to terminate child goroutine
- */
+*/
 
 package main
 
@@ -69,7 +69,7 @@ import (
 // 따라서 해결책은 생산자 고루틴에게 종료를 알리는 채널을 제공하는 것
 
 func main() {
-	newRandStream := func(done <-chan interface{}) <- chan int {
+	newRandStream := func(done <-chan interface{}) <-chan int {
 		randStream := make(chan int)
 		go func() {
 			defer fmt.Println("newRandStream closure exited.")
@@ -77,8 +77,8 @@ func main() {
 			for {
 				select {
 				case randStream <- rand.Int():
-					case <-done:
-						return
+				case <-done:
+					return
 				}
 			}
 		}()
