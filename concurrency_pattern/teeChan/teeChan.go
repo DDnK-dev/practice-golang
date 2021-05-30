@@ -10,6 +10,7 @@ tee channel은 여기서 이름을 따온 것. 채널에서 들어오는 값을 
 package main
 
 import (
+	"fmt"
 	"practice-golang/common"
 )
 
@@ -19,6 +20,9 @@ func main() {
 
 	out1, out2 := tee(done, common.Take(done, common.Repeat(done, 1, 2), 4))
 
+	for val1 := range out1 {
+		fmt.Printf("out1: %v, out2: %v2\n", val1, <-out2)
+	}
 }
 
 func tee(
