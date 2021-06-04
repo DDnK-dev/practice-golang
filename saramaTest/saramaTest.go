@@ -58,7 +58,6 @@ func main() {
 		log.Panicf("Error parsing Kafka version: %v", err)
 	}
 
-
 	//Construct a new Sarama configuration.
 	//The Kafka cluster version has to be defined before the consumer/producer is initialized.
 	config := sarama.NewConfig()
@@ -103,7 +102,7 @@ func main() {
 			if err := client.Consume(ctx, strings.Split(topics, ","), &consumer); err != nil {
 				log.Panicf("Error from consumer: %v", err)
 			}
-			// check if context was cancelled, signaling that the consumer should stop
+			// check if contextTest was cancelled, signaling that the consumer should stop
 			if ctx.Err() != nil {
 				return
 			}
@@ -118,7 +117,7 @@ func main() {
 	signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case <-ctx.Done():
-		log.Println("terminating: context cancelled")
+		log.Println("terminating: contextTest cancelled")
 	case <-sigterm:
 		log.Println("terminating: via signal")
 	}
