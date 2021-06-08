@@ -12,6 +12,71 @@ func main() {
 	consumer3()
 }
 
+// 고정 간격 기반 하트비트를 사용한 예제
+func ProducerFixedInterval(
+	done <-chan interface{},
+	pulseInterval time.Duration,
+	nums ...int,
+) (<-chan interface{}, <-chan int) {
+	heartbeat := make(chan interface{}, 1)
+	intStream := make(chan int)
+	go func() {
+		defer close(heartbeat)
+		defer close(intStream)
+
+		time.Sleep(2 * time.Second)
+
+		pulse := time.Tick(pulseInterval)
+	numLoop:
+		for _, n := range nums {
+			for {
+				select {
+				case <-done:
+					return
+				case <-pulse:
+					select {
+					case heartbeat <- struct{}{}:
+					default:
+					}
+				case intStream <- n:
+					continue numLoop
+				}
+			}
+		}
+	}()
+
+	return heartbeat, intStream
+}
+
+// 고루틴이 쓰기 테스트를 한다고 가정할 때, 고루틴이 작업을 시작했는지만 알아보기 위해서 사용하는 하트비트
+func producerForWriter(
+	done <-chan interface{},
+	nums ...int,
+) (<-chan interface{}, <-chan int) {
+	heartbeat := make(chan interface{}, 1)
+	intStream := make(chan int)
+	go func() {
+		defer close(heartbeat)
+		defer close(intStream)
+
+		time.Sleep(2 * time.Second) // 작업을 시작할 수 있기 전에 약간의 지연을 시뮬레이션
+
+		for _, n := range nums {
+			select {
+			case heartbeat <- struct{}{}:
+			default:
+			}
+			select {
+			case <-done:
+				return
+			case intStream <- n:
+			}
+		}
+	}()
+
+	return heartbeat, intStream
+}
+
 // producerForTest 작업 단위의 시작부분에서 발생하는 하트비트를 살펴보는 예제이다.
 // 테스트에 유용하다...
 func consumer3() {
