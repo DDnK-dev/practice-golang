@@ -23,7 +23,7 @@ func main() {
 		done <-chan interface{},
 		intStream <-chan int,
 		multiplier int,
-		) <-chan int {
+	) <-chan int {
 		multipliedStream := make(chan int)
 		go func() {
 			defer close(multipliedStream)
@@ -31,7 +31,7 @@ func main() {
 				select {
 				case <-done:
 					return
-				case multipliedStream <- i*multiplier:
+				case multipliedStream <- i * multiplier:
 				}
 			}
 		}()
@@ -42,7 +42,7 @@ func main() {
 		done <-chan interface{},
 		intStream <-chan int,
 		additive int,
-		) <-chan int {
+	) <-chan int {
 		addedStream := make(chan int)
 		go func() {
 			defer close(addedStream)
@@ -50,7 +50,7 @@ func main() {
 				select {
 				case <-done:
 					return
-				case addedStream <- i+additive:
+				case addedStream <- i + additive:
 				}
 			}
 		}()
