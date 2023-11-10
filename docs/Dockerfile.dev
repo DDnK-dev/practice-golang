@@ -1,0 +1,45 @@
+## Development environment
+
+FROM ubuntu:22.04
+
+RUN sed -i 's/archive.ubuntu.com/mirror.kakao.com/g' /etc/apt/sources.list
+# Install dependencies and golang
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    vim \
+    curl \
+    git \
+    libboost-all-dev \
+    libeigen3-dev \
+    libgflags-dev \
+    # libgoogle-glog-dev \
+    libopencv-dev \
+    libprotobuf-dev \
+    protobuf-compiler \
+    python3-dev \
+    python3-pip \
+    python3-setuptools \
+    python3-wheel \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN wget https://go.dev/dl/go1.21.4.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf go1.21.4.linux-amd64.tar.gz && \
+    rm go1.21.4.linux-amd64.tar.gz && \
+    echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.bashrc && \
+    echo "export GOPATH=$HOME/go" >> ~/.bashrc && \
+    echo "export PATH=$PATH:$GOPATH/bin" >> ~/.bashrc && \
+    source ~/.bashrc
+
+# Install golang dependencies (staticcheck and kubebuilder, dlv)
+
+RUN go install honnef.co/go/tools/cmd/staticcheck@latest
+RUN curl -L -o kubebuilder "https://go.kubebuilder.io/dl/latest/$(go env GOOS)/$(go env GOARCH)" && \
+    chmod +x kubebuilder && mv kubebuilder /usr/local/bin/
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
+RUN go install  golang.org/x/lint/golint@latest
+RUN go install golang.org/x/tools/gopls@latest
+RUN go install github.com/uudashr/gopkgs/v2/cmd/gopkgs@latest
+RUN go install github.com/ramya-rao-a/go-outline@latest
+RUN go install github.com/cweill/gotests/gotests@latest
