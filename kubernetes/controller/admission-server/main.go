@@ -18,6 +18,8 @@ import (
 )
 
 func main() {
+	setLogger()
+
 	var cert, key string
 
 	// set TLS
