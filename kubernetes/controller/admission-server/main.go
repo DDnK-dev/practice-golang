@@ -81,6 +81,7 @@ func ServeMutatePods(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Failed to parse admission request: %v", err), http.StatusBadRequest)
 		return
 	}
+	// TODO: implement mutation
 	_ = admission.Admitter{
 		Logger:  logger,
 		Request: in.Request,
