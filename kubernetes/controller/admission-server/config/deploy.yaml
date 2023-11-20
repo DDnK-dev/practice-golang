@@ -1,0 +1,137 @@
+# webhook handling server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simple-kubernetes-webhook
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: simple-kubernetes-webhook
+  template:
+    metadata:
+      labels:
+        app: simple-kubernetes-webhook
+    spec:
+      containers:
+        - image: simple-kubernetes-webhook:latest
+          name: simple-kubernetes-webhook
+          volumeMounts:
+            - name: tls
+              mountPath: "/etc/admission-webhook/tls"
+      volumes:
+        - name: tls
+          secret:
+            secretName: simple-kubernetes-webhook-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: simple-kubernetes-webhook
+  namespace: default
+spec:
+  ports:
+    - port: 443
+      protocol: TCP
+      targetPort: 443
+  selector:
+    app: simple-kubernetes-webhook
+---
+# Kubernetes에 이 서버로 webhook을 보내달라고 요청하기 위한 오브젝트
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: "simple-kubernetes-webhook.acme.com"
+webhooks:
+  - name: "simple-kubernetes-webhook.acme.com"
+   # 이런식의 selector 사용이 가능하다는 것만 알아두자
+   #namespaceSelector:
+   #  matchLabels:
+   #    admission-webhook: enabled
+    rules:
+     # pod 생성시
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["pods"]
+        scope: "*"
+    clientConfig:
+      service:
+        namespace: default
+        name: simple-kubernetes-webhook
+        path: /validate-pods
+        port: 443
+      caBundle: |
+        LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURRekNDQWl1Z0F3SUJBZ0lVQldDTWJIWSsvUHJj
+        RWZpV21WeU9oVnJ1YVRNd0RRWUpLb1pJaHZjTkFRRUwKQlFBd01URUxNQWtHQTFVRUJoTUNRVlV4SWpB
+        Z0JnTlZCQU1NR1hOcGJYQnNaUzFyZFdKbGNtNWxkR1Z6TFhkbApZbWh2YjJzd0hoY05Nak14TVRJd01U
+        RTFNekF4V2hjTk1qUXhNVEU1TVRFMU16QXhXakF4TVFzd0NRWURWUVFHCkV3SkJWVEVpTUNBR0ExVUVB
+        d3daYzJsdGNHeGxMV3QxWW1WeWJtVjBaWE10ZDJWaWFHOXZhekNDQVNJd0RRWUoKS29aSWh2Y05BUUVC
+        QlFBRGdnRVBBRENDQVFvQ2dnRUJBTkxDdUhnM2V1MDYxUnp4Ty9NV3ZBR0xsY2lwMXZkcQozS1FvTG94
+        K0phOXJMdFBrYTFxZGhQWFZmMnFxSXZOY1ljbFU1M0wwSXcwUDZCRUtvejlkQ29XWWJOamVDTUl1CkV1
+        Z3NxejJSOWQ4bllXUWNqSDZhaS85U25mWHVTS3FZMldUQllsVjdubE0yay9penZhZTZNaEVSb01BQnNC
+        dHAKbk04WkE5OUszWFNMR2tvWEJWTDY5Z1VIM2paWllZOTFaV2ZPWUpjTFFYSm01WVBiazJHZ0xleU95
+        ZzBLOFdHQwpKQndQRW1kWnRZQ1JZNjBOR292eG9VcUZwYXVaRWw1V2ttOGtEN1ZCc3dtQmxIY1dWTjd5
+        Q1lwcWhJUWQrS2VFCk1ZQkxqTjlpbFNYclVCMlZqL1UrTzhFQVhoWXZjZnZLRCtwRXhYcDFkLzJrMy9v
+        KzJjWEtsNnNDQXdFQUFhTlQKTUZFd0hRWURWUjBPQkJZRUZNUFR6eExaMWFWdnVWcDB5cjJNOE1UWXY1
+        T1JNQjhHQTFVZEl3UVlNQmFBRk1QVAp6eExaMWFWdnVWcDB5cjJNOE1UWXY1T1JNQThHQTFVZEV3RUIv
+        d1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMCkJRQURnZ0VCQUVMZ2VqVHVIejJiUmJzelFma3pTdHhj
+        QkJiR0hYTzNHL056N2xHZlYzbCtzREF5Ritma0gxWloKZzR3cEc4Zld2UVJYbjlrK0ZaZUkrRmVmY1N0
+        WmM2NC8vbFJxalM2eW9WalFUZnhNbkZwVW1tR1FlMUg0V2ljTgpLaUNWdy9zSWdDeTZGOCs5SnA5MThF
+        Njk0dXdLcVRjS1BiZEVORlNyVEpBM1NyWXE5bThzdjJNSFdDTmJlN0l0Cm9oZ2FiSi9BaWlzQjRoMi9T
+        Uk1ZL1RIeVdzNmgwa2JxUXcrWW1tdkNIZVRCekZmdWRuRkkxZHFyaG9qYzNFcGoKd0dqVFlsWkVUWXpy
+        WlgwNXNIU0tWWHdiM2RYMXAvaTJIRHRhMmp0ZFZpelFEUW80ei9QQWljMG5VNWxCbWs4Lwo5Z0E5bHpw
+        Mm51RE9DamY2ZXR0OUxQZmxLVml4RzJjPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    admissionRevewVersions: ["v1"]
+    sideEffects: None
+    timeoutSeconds: 2
+---
+# Kubernetes에 이 서버로 webhook을 보내달라고 요청하기 위한 오브젝트
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: "simple-kubernetes-webhook.acme.com"
+webhooks:
+  - name: "simple-kubernetes-webhook.acme.com"
+   # 이런식의 selector 사용이 가능하다는 것만 알아두자
+   #namespaceSelector:
+   #  matchLabels:
+   #    admission-webhook: enabled
+    rules:
+     # pod 생성시
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["pods"]
+        scope: "*"
+    clientConfig:
+      service:
+        namespace: default
+        name: simple-kubernetes-webhook
+        path: /mutate-pods
+        port: 443
+      caBundle: |
+        LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURRekNDQWl1Z0F3SUJBZ0lVQldDTWJIWSsvUHJj
+        RWZpV21WeU9oVnJ1YVRNd0RRWUpLb1pJaHZjTkFRRUwKQlFBd01URUxNQWtHQTFVRUJoTUNRVlV4SWpB
+        Z0JnTlZCQU1NR1hOcGJYQnNaUzFyZFdKbGNtNWxkR1Z6TFhkbApZbWh2YjJzd0hoY05Nak14TVRJd01U
+        RTFNekF4V2hjTk1qUXhNVEU1TVRFMU16QXhXakF4TVFzd0NRWURWUVFHCkV3SkJWVEVpTUNBR0ExVUVB
+        d3daYzJsdGNHeGxMV3QxWW1WeWJtVjBaWE10ZDJWaWFHOXZhekNDQVNJd0RRWUoKS29aSWh2Y05BUUVC
+        QlFBRGdnRVBBRENDQVFvQ2dnRUJBTkxDdUhnM2V1MDYxUnp4Ty9NV3ZBR0xsY2lwMXZkcQozS1FvTG94
+        K0phOXJMdFBrYTFxZGhQWFZmMnFxSXZOY1ljbFU1M0wwSXcwUDZCRUtvejlkQ29XWWJOamVDTUl1CkV1
+        Z3NxejJSOWQ4bllXUWNqSDZhaS85U25mWHVTS3FZMldUQllsVjdubE0yay9penZhZTZNaEVSb01BQnNC
+        dHAKbk04WkE5OUszWFNMR2tvWEJWTDY5Z1VIM2paWllZOTFaV2ZPWUpjTFFYSm01WVBiazJHZ0xleU95
+        ZzBLOFdHQwpKQndQRW1kWnRZQ1JZNjBOR292eG9VcUZwYXVaRWw1V2ttOGtEN1ZCc3dtQmxIY1dWTjd5
+        Q1lwcWhJUWQrS2VFCk1ZQkxqTjlpbFNYclVCMlZqL1UrTzhFQVhoWXZjZnZLRCtwRXhYcDFkLzJrMy9v
+        KzJjWEtsNnNDQXdFQUFhTlQKTUZFd0hRWURWUjBPQkJZRUZNUFR6eExaMWFWdnVWcDB5cjJNOE1UWXY1
+        T1JNQjhHQTFVZEl3UVlNQmFBRk1QVAp6eExaMWFWdnVWcDB5cjJNOE1UWXY1T1JNQThHQTFVZEV3RUIv
+        d1FGTUFNQkFmOHdEUVlKS29aSWh2Y05BUUVMCkJRQURnZ0VCQUVMZ2VqVHVIejJiUmJzelFma3pTdHhj
+        QkJiR0hYTzNHL056N2xHZlYzbCtzREF5Ritma0gxWloKZzR3cEc4Zld2UVJYbjlrK0ZaZUkrRmVmY1N0
+        WmM2NC8vbFJxalM2eW9WalFUZnhNbkZwVW1tR1FlMUg0V2ljTgpLaUNWdy9zSWdDeTZGOCs5SnA5MThF
+        Njk0dXdLcVRjS1BiZEVORlNyVEpBM1NyWXE5bThzdjJNSFdDTmJlN0l0Cm9oZ2FiSi9BaWlzQjRoMi9T
+        Uk1ZL1RIeVdzNmgwa2JxUXcrWW1tdkNIZVRCekZmdWRuRkkxZHFyaG9qYzNFcGoKd0dqVFlsWkVUWXpy
+        WlgwNXNIU0tWWHdiM2RYMXAvaTJIRHRhMmp0ZFZpelFEUW80ei9QQWljMG5VNWxCbWs4Lwo5Z0E5bHpw
+        Mm51RE9DamY2ZXR0OUxQZmxLVml4RzJjPQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    admissionRevewVersions: ["v1"]
+    sideEffects: None
+    timeoutSeconds: 2
+---
