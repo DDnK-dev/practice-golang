@@ -65,12 +65,25 @@ func ServeValidatePods(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: implement validation
-	_ = admission.Admitter{
+	adm := admission.Admitter{
 		Logger:  logger,
 		Request: in.Request,
 	}
-	// adm.MutatePodReview()
+	review, err := adm.ValidatePodReview()
+	if err != nil {
+		logger.Errorf("Failed to mutate pod: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to mutate pod: %v", err), http.StatusBadRequest)
+	}
+	resp, err := json.Marshal(review)
+	if err != nil {
+		logger.Errorf("Failed to marshal admission review response: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to marshal admission review response: %v", err), http.StatusBadRequest)
+	}
+	// stdout으로 출력
+	w.Header().Set("Content-Type", "application/json")
+	logger.Debug("sending response")
+	logger.Debugf("%s", resp)
+	fmt.Fprintf(w, "%s", resp)
 }
 
 func ServeMutatePods(w http.ResponseWriter, r *http.Request) {
@@ -82,10 +95,24 @@ func ServeMutatePods(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// TODO: implement mutation
-	_ = admission.Admitter{
+	adm := admission.Admitter{
 		Logger:  logger,
 		Request: in.Request,
 	}
+	review, err := adm.MutatePodReview()
+	if err != nil {
+		logger.Errorf("Failed to mutate pod: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to mutate pod: %v", err), http.StatusBadRequest)
+	}
+	resp, err := json.Marshal(review)
+	if err != nil {
+		logger.Errorf("Failed to marshal admission review response: %v", err)
+		http.Error(w, fmt.Sprintf("Failed to marshal admission review response: %v", err), http.StatusBadRequest)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	logger.Debug("sending response")
+	logger.Debugf("%s", resp)
+	fmt.Fprintf(w, "%s", resp)
 }
 
 // parseRequest extracts an AdmissionReview from an http.Request if possible

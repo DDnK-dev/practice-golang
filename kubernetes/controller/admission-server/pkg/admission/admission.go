@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"webhook-server/pkg/mutation"
+	"webhook-server/pkg/validation"
 
 	"github.com/sirupsen/logrus"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -24,21 +25,35 @@ func (a Admitter) MutatePodReview() (*admissionv1.AdmissionReview, error) {
 	if err != nil {
 		e := fmt.Sprintf("Failed to get pod from admission review request: %v", err)
 		// uid types.UID, allowed bool, httpCode int32, reason string
-		return reviewResponse(a.Request.UID, true, http.StatusBadRequest, e), err
+		return reviewResponse(a.Request.UID, false, http.StatusBadRequest, e), err
 	}
 	// mutation 관련 로직은 mutation에 구현한다.
 	m := mutation.NewMutator(a.Logger)
 	patch, err := m.MutatePodPatch(pod)
 	if err != nil {
 		e := fmt.Sprintf("Failed to mutate pod: %v", err)
-		return reviewResponse(a.Request.UID, true, http.StatusBadRequest, e), err
+		return reviewResponse(a.Request.UID, false, http.StatusBadRequest, e), err
 	}
 
 	return patchReviewResponse(a.Request.UID, patch), nil
 }
 
 func (a Admitter) ValidatePodReview() (*admissionv1.AdmissionReview, error) {
-	return nil, nil // TODO: implement this
+	pod, err := a.Pod()
+	if err != nil {
+		e := fmt.Sprintf("Failed to get pod from admission review request: %v", err)
+		return reviewResponse((a.Request.UID), true, http.StatusBadRequest, e), err
+	}
+	m := validation.NewValidator(a.Logger)
+	valid, err := m.ValidatePodPatch(pod)
+	if err != nil {
+		e := fmt.Sprintf("Failed to validate pod: %v", err)
+		return reviewResponse(a.Request.UID, false, http.StatusBadRequest, e), err
+	}
+	if !valid.Valid {
+		return reviewResponse(a.Request.UID, false, http.StatusBadRequest, valid.Reason), nil
+	}
+	return reviewResponse(a.Request.UID, true, http.StatusOK, ""), nil
 }
 
 // Pod extracts pod from request
